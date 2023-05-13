@@ -1,4 +1,4 @@
-# data-visualization
+# Smiling Machines data-visualization
 Industrial cloud computing data visualization
 
 # How to run
