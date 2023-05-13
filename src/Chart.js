@@ -10,7 +10,6 @@ import {
     Title,
     Tooltip,
 } from "chart.js";
-import configuration from "../configuration";
 
 ChartJS.register(
     CategoryScale,
@@ -23,13 +22,12 @@ ChartJS.register(
 );
 
 const Chart = ({
-    id,
-    color,
-    selectedValue,
+    field,
+    data,
+    color
 }) => {
     const [labels, setLabels] = useState([]);
     const [remoteData, setRemoteData] = useState(undefined);
-    const [selectedPeriod, setSelectedPeriod] = useState(undefined);
 
     const pushValues = (values) => {
         const newRemoteData = {...remoteData};
@@ -40,43 +38,23 @@ const Chart = ({
         setRemoteData(newRemoteData);
     };
 
-    const fetchData = (definedLastTimestamp = undefined) => {
-        let timestamp = Date.now() - 3600000;
-        fetch(`${configuration.API_GATEWAY}/data?id=${id}&timestamp=${timestamp}`)
-            .then((response) => response.json())
-            .then((res) => {
-                const values = {};
-                res.Items.forEach((key) => {
-                    values[`${new Date(parseInt(key.timestamp.N, 10)).toISOString().split(".")[0]
-                        .split("T")[0]} ${new Date(parseInt(key.timestamp.N, 10)).toLocaleTimeString().split(":").slice(0, -2)
-                        .join(":")}:00`] = parseFloat(key.value.N);
-                });
-                if (definedLastTimestamp) {
-                    pushValues(values);
-                } else {
-                    setRemoteData(values);
-                }
-            });
+    const createGraphs = (definedLastTimestamp = undefined) => {
+        const values = {};
+        data.Items.forEach((key) => {
+            values[`${new Date(parseInt(key.timestamp.N, 10)).toISOString().split(".")[0]
+                .split("T")[0]} ${new Date(parseInt(key.timestamp.N, 10)).toLocaleTimeString().split(":").slice(0, -1) //.slice(0, -1) to aggregate per minute, .slice(0, -2) to aggregate per hour
+                .join(":")}:00`] = parseFloat(key.payload.M[field].N);
+        });
+        if (definedLastTimestamp) {
+            pushValues(values);
+        } else {
+            setRemoteData(values);
+        }
     };
 
     useEffect(() => {
-        if (id) {
-            fetchData();
-        }
-    }, [id]);
-
-    useEffect(() => {
-        if (selectedValue) {
-            if (selectedPeriod) {
-                if (selectedPeriod !== selectedValue) {
-                    fetchData();
-                    setSelectedPeriod(selectedValue);
-                }
-            } else {
-                setSelectedPeriod(selectedValue);
-            }
-        }
-    }, [selectedValue, selectedPeriod]);
+        createGraphs();
+    }, []);
 
     useEffect(() => {
         if (remoteData) {
@@ -105,7 +83,7 @@ const Chart = ({
                 labels,
                 datasets: [
                     {
-                        label: id,
+                        label: field,
                         data: labels.map((key) => remoteData[key]),
                         borderColor: color,
                         backgroundColor: color,
